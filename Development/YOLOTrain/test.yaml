@@ -1,0 +1,8 @@
+train: "DS_sorted\Real\test"
+val: "DS_sorted\Real\test"
+
+test: "DS_sorted\Real\test"
+
+nc: 1
+
+names: ["smoke_detector"]
