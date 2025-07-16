@@ -1,0 +1,3 @@
+[submodule "RosNodes/yolo_ros"]
+	path = RosNodes/yolo_ros
+	url = https://github.com/mgonzs13/yolo_ros.git
