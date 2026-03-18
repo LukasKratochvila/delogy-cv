@@ -9,6 +9,10 @@ import utils
 from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
 
+import matplotlib.pyplot as plt
+from sklearn.metrics import RocCurveDisplay, roc_curve, auc
+from faster_coco_eval.extra import PreviewResults, Curves
+
 
 class CocoEvaluator:
     def __init__(self, coco_gt, iou_types):
@@ -25,6 +29,8 @@ class CocoEvaluator:
         self.img_ids = []
         self.eval_imgs = {k: [] for k in iou_types}
 
+        self.results = []
+
     def update(self, predictions):
         img_ids = list(np.unique(list(predictions.keys())))
         self.img_ids.extend(img_ids)
@@ -40,6 +46,9 @@ class CocoEvaluator:
             img_ids, eval_imgs = evaluate(coco_eval)
 
             self.eval_imgs[iou_type].append(eval_imgs)
+
+            if results:
+                self.results.append(results[0])
 
     def synchronize_between_processes(self):
         for iou_type in self.iou_types:
@@ -147,7 +156,87 @@ class CocoEvaluator:
                 ]
             )
         return coco_results
+    
+    # https://github.com/cocodataset/cocoapi/issues/381
+    # https://github.com/facebookresearch/maskrcnn-benchmark/issues/94
+    def plot_pr_curve(self, modelName, dataRoot, datasetMode, save=True):
+        for iou_type in self.iou_types:    
+            all_precision = self.coco_eval[iou_type].eval['precision']
 
+            pr_5 = all_precision[0, :, 0, 0, 2] # data for IoU@0.5
+            pr_7 = all_precision[4, :, 0, 0, 2] # data for IoU@0.7
+            pr_9 = all_precision[8, :, 0, 0, 2] # data for IoU@0.9
+
+            x = np.arange(0, 1.01, 0.01)
+            plt.plot(x, pr_5, label='IoU@0.5')
+            plt.plot(x, pr_7, label='IoU@0.7')
+            plt.plot(x, pr_9, label='IoU@0.9')
+            plt.legend(loc="upper right")
+            plt.ylabel("Precision [-]")
+            plt.xlabel("Recall [-]")
+            plt.title("PR curve")
+
+            if save:
+                plt.savefig("-".join(["PRcurve","model", modelName.replace("/", "-"), "dataset", dataRoot.replace("/", "-"), datasetMode]) + ".png")
+                plt.close()
+            else:
+                plt.show()
+
+    # https://github.com/ultralytics/yolov5/issues/2782
+    def plot_roc_curve(self, modelName, dataRoot, datasetMode, save=True):
+        for iou_type in self.iou_types:
+            imgCount = len(self.coco_eval[iou_type].evalImgs)
+            gt_5 = np.array([np.all(self.coco_eval[iou_type].evalImgs[i]['gtMatches'][0,0]) for i in range(imgCount)]) # data for IoU@0.5
+            gt_7 = np.array([np.all(self.coco_eval[iou_type].evalImgs[i]['gtMatches'][4,0]) for i in range(imgCount)]) # data for IoU@0.7
+            gt_9 = np.array([np.all(self.coco_eval[iou_type].evalImgs[i]['gtMatches'][8,0]) for i in range(imgCount)]) # data for IoU@0.9
+            
+            dtScores = np.array([self.coco_eval[iou_type].evalImgs[i]['dtScores'][np.argsort(-np.array(self.coco_eval[iou_type].evalImgs[i]['dtScores']), kind='mergesort')[0]] for i in range(imgCount)])
+
+            #print(imgCount, gtMatches, dtScores)
+            fpr_5, tpr_5, _ = roc_curve(gt_5, dtScores, pos_label=1)
+            roc_auc_5 = auc(fpr_5, tpr_5)
+            fpr_7, tpr_7, _ = roc_curve(gt_7, dtScores, pos_label=1)
+            roc_auc_7 = auc(fpr_7, tpr_7)
+            fpr_9, tpr_9, _ = roc_curve(gt_9, dtScores, pos_label=1)
+            roc_auc_9 = auc(fpr_9, tpr_9)
+
+
+            x = np.arange(0, 1.01, 0.01)
+            plt.xlim((-0.01, 1.01))
+            plt.ylim((-0.01, 1.01))
+            plt.plot(fpr_5, tpr_5, label=f'IoU@0.5 (AUC = {roc_auc_5})')
+            plt.plot(fpr_7, tpr_7, label=f'IoU@0.7 (AUC = {roc_auc_7})')
+            plt.plot(fpr_9, tpr_9, label=f'IoU@0.9 (AUC = {roc_auc_9})')
+            plt.plot(x, x, label="Chance level (AUC = 0.5)", color="k", linestyle="--")
+            plt.legend(loc="lower right")
+            plt.ylabel("True Positive Rate")
+            plt.xlabel("False Positive Rate")
+            plt.title("ROC curve")
+
+            if save:
+                plt.savefig("-".join(["ROCcurve","model", modelName.replace("/", "-"), "dataset", dataRoot.replace("/", "-"), datasetMode]) + ".png")
+                plt.close()
+            else:
+                plt.show()
+
+    def print_eval(self):
+        for iou_type in self.iou_types:    
+            print(self.coco_eval[iou_type].eval)
+
+    def print_cm(self):
+        coco_gt = copy.deepcopy(self.coco_gt)
+        with redirect_stdout(io.StringIO()):
+            coco_dt = coco_gt.loadRes(self.results) if self.results else COCO()
+        results = PreviewResults(coco_gt, coco_dt, iou_tresh=0.5, iouType="bbox", useCats=False)
+        results.display_matrix()
+
+    def print_f1_confidence(self):
+        coco_gt = copy.deepcopy(self.coco_gt)
+        with redirect_stdout(io.StringIO()):
+            coco_dt = coco_gt.loadRes(self.results) if self.results else COCO()
+        cur = Curves(coco_gt, coco_gt, iou_tresh=0.5, iouType="bbox")
+        cur.plot_pre_rec()
+        cur.plot_f1_confidence()
 
 def convert_to_xywh(boxes):
     xmin, ymin, xmax, ymax = boxes.unbind(1)
