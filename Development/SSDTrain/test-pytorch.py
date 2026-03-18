@@ -7,7 +7,9 @@ import numpy as np
 from torchvision import models, transforms
 
 import cv2
-from PIL import Image
+#import matplotlib.pyplot as plt
+
+from models.imagenet1000_clsidx_to_labels import classes
 
 torch.backends.quantized.engine = 'qnnpack'
 
@@ -37,11 +39,10 @@ with torch.no_grad():
             raise RuntimeError("failed to read frame")
 
         # convert opencv output from BGR to RGB
-        image = image[:, :, [2, 1, 0]]
-        permuted = image
+        permuted = image[:, :, [2, 1, 0]]
 
         # preprocess
-        input_tensor = preprocess(image)
+        input_tensor = preprocess(permuted)
 
         # create a mini-batch as expected by the model
         input_batch = input_tensor.unsqueeze(0)
@@ -54,6 +55,18 @@ with torch.no_grad():
         frame_count += 1
         now = time.time()
         if now - last_logged > 1:
+            print("####################### Next #######################")
             print(f"{frame_count / (now-last_logged)} fps")
             last_logged = now
             frame_count = 0
+            top = list(enumerate(output[0].softmax(dim=0)))
+            top.sort(key=lambda x: x[1], reverse=True)
+            for idx, val in top[:10]:
+                print(f"{val.item()*100:.2f}% {classes[idx]}")
+                #print(output[0])
+            
+            cv2.destroyAllWindows()
+            cv2.imshow(classes[top[0][0]], image[:, :, [2, 1, 0]])
+            #plt.axis('off')
+            #plt.imshow(image[:, :, [2, 1, 0]])
+            #plt.show()
