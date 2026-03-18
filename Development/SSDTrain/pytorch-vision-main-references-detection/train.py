@@ -40,14 +40,14 @@ def copypaste_collate_fn(batch):
     return copypaste(*utils.collate_fn(batch))
 
 
-def get_dataset(is_train, args):
-    image_set = "train" if is_train else "test"
+def get_dataset(data_mode, args):
+    image_set = data_mode
     num_classes, mode = {"coco": (91, "instances"), "coco_kp": (2, "person_keypoints")}[args.dataset]
     with_masks = "mask" in args.model
     ds = get_coco(
         root=args.data_path,
         image_set=image_set,
-        transforms=get_transform(is_train, args),
+        transforms=get_transform(data_mode == "train", args),
         mode=mode,
         use_v2=args.use_v2,
         with_masks=with_masks,
@@ -152,6 +152,12 @@ def get_args_parser(add_help=True):
         help="Only test the model",
         action="store_true",
     )
+    parser.add_argument(
+        "--test-mode",
+        dest="test_mode",
+        help="mode to test (default: test)",
+        default="test",
+    )
 
     parser.add_argument(
         "--use-deterministic-algorithms", action="store_true", help="Forces the use of deterministic algorithms only."
@@ -204,8 +210,8 @@ def main(args):
     # Data loading code
     print("Loading data")
 
-    dataset, num_classes = get_dataset(is_train=True, args=args)
-    dataset_test, _ = get_dataset(is_train=False, args=args)
+    dataset, num_classes = get_dataset("train", args=args)
+    dataset_test, _ = get_dataset(args.test_mode, args=args)
 
     print("Creating data loaders")
     if args.distributed:
