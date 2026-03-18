@@ -1,0 +1,8 @@
+train: "DS_sorted\Real\test_diff"
+val: "DS_sorted\Real\test_diff"
+
+test: "DS_sorted\Real\test_diff"
+
+nc: 1
+
+names: ["smoke_detector"]
