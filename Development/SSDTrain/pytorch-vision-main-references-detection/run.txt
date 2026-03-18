@@ -1,2 +1,17 @@
-torchrun pytorch-vision-main-references-detection/train.py --dataset coco --model ssdlite320_mobilenet_v3_large --epochs 601 --aspect-ratio-group-factor 3 --lr-scheduler cosineannealinglr --lr 0.0015 --batch-size 20 --data-path ObecneCidlo/DatasetC --output-dir trainCidloC/ --data-augmentation ssd  &> trainCidloC/log.txt
+source venv3.12/bin/activate
+
+export LD_LIBRARY_PATH=/usr/local/cuda-12.5/lib64
+
+torchrun pytorch-vision-main-references-detection/train.py --dataset coco --model ssdlite320_mobilenet_v3_large --epochs 601 --aspect-ratio-group-factor 3 --lr-scheduler cosineannealinglr --lr 0.0015 --batch-size 20 --weight-decay 0.0001 --data-augmentation ssd --data-path DS_sorted/Generated/ --test-mode val &> trainGenGen2/trainlog.txt
+
+torchrun pytorch-vision-main-references-detection/train.py --dataset coco --model ssdlite320_mobilenet_v3_large --resume trainCidloC/model_600.pth --data-path ObecneCidlo/DatasetC --output-dir trainCidloC/ --test-only  &> trainCidloC/logTest.txt
+
+torchrun pytorch-vision-main-references-detection/train.py --dataset coco --model ssdlite320_mobilenet_v3_large --resume trainMixReal/model_540_best.pth --data-path DS_sorted/Generated --test-only --test-mode testDiff  &> trainMixReal/logTestDiff.txt
+
+
+torchrun pytorch-vision-main-references-detection/train.py --dataset coco --model ssdlite320_mobilenet_v3_large --resume trainMixReal/model_540_best.pth --data-path DS_sorted/Generated --test-only --test-mode val  &> trainMixReal/logVal.txt
+
+torchrun --nproc_per_node=8 train.py --dataset coco --model ssd300_vgg16 --epochs 120 --lr-steps 80 110 --aspect-ratio-group-factor 3 --lr 0.0005 --batch-size 20 --weight-decay 0.0005 --data-augmentation ssd --weights-backbone VGG16_Weights.IMAGENET1K_FEATURES --test-mode val --data-path DS_sorted/Generated &> trainMixRealVgg/trainlog.txt
+
+torchrun pytorch-vision-main-references-detection/train.py --dataset coco --model ssd300_vgg16 --epochs 120 --lr-steps 80 110 --aspect-ratio-group-factor 3 --lr 0.0005 --batch-size 20 --weight-decay 0.0005 --data-augmentation alb --weights-backbone VGG16_Weights.IMAGENET1K_FEATURES --test-mode val --data-path DS_sorted/Real --output-dir trainAlbAugRealRealVgg/ &> trainAlbAugRealRealVgg/trainlog.txt
 
