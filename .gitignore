@@ -1,3 +1,14 @@
+detr/*
+Datasets/*
+GeneratedCoCo*
+ROS*
+ros2-ws*
+Results*
+*.json
+*.png
+*.txt
+*.pth
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
