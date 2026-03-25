@@ -1,5 +1,5 @@
-# Delogy computer vision
-This project realize fire detector detection in image using YOLO model. This repository contains the development code for training the models and the source code of the ROS2 nodes for building the detection pipeline.
+# Towards automatic smoke detector inspection
+This project realize fire detector detection in image using end-to-end model. This repository contains the development code for training the models and the source code of the ROS2 nodes for building the detection pipeline.
 
 ## Instalation
 To build the entire pipeline, you need to install the ROS2 distribution (tested ```rolling```), create a ROS2 workspace, create a python virtual environment with requirements, and set up a build of ros nodes running with the created environment.
